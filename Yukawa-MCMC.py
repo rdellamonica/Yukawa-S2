@@ -8,7 +8,7 @@ from multiprocessing import Pool
 from scipy.interpolate import interp1d
 
 # Data from Gillessen et al. (2017) for the astrometric positions of the S2 star
-keckvlt_data = np.genfromtxt("tab_gillessen.csv", delimiter = ";")
+keckvlt_data = np.genfromtxt("data/tab_gillessen.csv")
 t_dat = keckvlt_data[:,0]
 x_dat = keckvlt_data[:,1]/1000
 errx = keckvlt_data[:,2]/1000
@@ -16,7 +16,7 @@ y_dat = keckvlt_data[:,3]/1000
 erry = keckvlt_data[:,4]/1000
 
 # Data from Gillessen et al. (2017) for the radial velocities of the S2 star
-v_data = np.genfromtxt("radial_v.csv", delimiter = ";")
+v_data = np.genfromtxt("data/radial_v.csv")
 t_dat_v = v_data[:,0]
 v_dat = v_data[:,1]
 errv = v_data[:,2]
@@ -96,7 +96,7 @@ def yukawa_orbit(params):
     vr0 = (x0*vx0+y0*vy0)/r0
     vphi0 = (vy0*x0-y0*vx0)/r0**2
 
-    # Definition of the Geodesic objects
+    # Definition of the Geodesic objects.
     # We use two different geodesics,
     # one for the forward integration form apocentre,
     # the other for the backward integration
