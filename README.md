@@ -1,6 +1,6 @@
 ## f(R)-gravity after the detection of the orbital precession of the S2 star around the Galactic centre massive black hole
 
-The pipeline used for the computations in the article that we hereby present makes use of the [PyGRO](https://github.com/rdellamonica/pigro/tree/master) package that is currently under development.
+The pipeline used for the computations in the article, contained in the `Yukawa-MCMC.py`, makes use of the [PyGRO](https://github.com/rdellamonica/pigro/tree/master) package that is currently under development.
 
 ***
 
