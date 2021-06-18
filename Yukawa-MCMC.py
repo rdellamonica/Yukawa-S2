@@ -8,15 +8,16 @@ from multiprocessing import Pool
 from scipy.interpolate import interp1d
 
 # Data from Gillessen et al. (2017) for the astrometric positions of the S2 star
-keckvlt_data = np.genfromtxt("data/tab_gillessen.csv")
+keckvlt_data = np.genfromtxt("data/tab_gillessen.csv", delimiter = ",")
 t_dat = keckvlt_data[:,0]
+t_dat[0] = 1992.224
 x_dat = keckvlt_data[:,1]/1000
 errx = keckvlt_data[:,2]/1000
 y_dat = keckvlt_data[:,3]/1000
 erry = keckvlt_data[:,4]/1000
 
 # Data from Gillessen et al. (2017) for the radial velocities of the S2 star
-v_data = np.genfromtxt("data/radial_v.csv")
+v_data = np.genfromtxt("data/radial_v.csv", delimiter = ",")
 t_dat_v = v_data[:,0]
 v_dat = v_data[:,1]
 errv = v_data[:,2]
@@ -57,7 +58,6 @@ def yukawa_orbit(params):
     # Incoming set of parameters from the Markov Chain
     M_bh, D, T, Tp, a, e, inc, Omega, omega, xS0, yS0, vxS0, vyS0, v_LSR, delta, lamb = params
     
-
     t0 = Tp-T/2
     r_g = G_N*M_bh/(c**2)
     
@@ -66,7 +66,6 @@ def yukawa_orbit(params):
 
     # Setting values for delta and lambda in the Metric object
     metric.set_constant(delta = delta, lamb = lamb)
-
 
     # Thiele-Innes elements
     A = np.cos(omega)*np.cos(Omega)-np.sin(omega)*np.sin(Omega)*np.cos(inc)
@@ -104,16 +103,16 @@ def yukawa_orbit(params):
     geo_fw = pygro.Geodesic("time-like", geo_engine, verbose = False)
     geo_fw.set_starting_point(0, r0, np.pi/2, phi0)
     u0 = geo_fw.get_initial_u0(vr0, 0, vphi0)
-    geo_fw.initial_u = [u0, vr0, 0, vphi0]
+    geo_fw.initial_u = [-u0, vr0, 0, vphi0]
 
     geo_bw = pygro.Geodesic("time-like", geo_engine, verbose = False)
     geo_bw.set_starting_point(0, r0, np.pi/2, phi0)
     u0 = geo_bw.get_initial_u0(vr0, 0, vphi0)
-    geo_bw.initial_u = [u0, vr0, 0, vphi0]
+    geo_bw.initial_u = [-u0, vr0, 0, vphi0]
 
     # Numerical integration
-    geo_engine.integrate(geo_fw, 4e+7, initial_step = 1e+5, PrecisionGoal = 5, AccuracyGoal = 3, direction = "fw")
-    geo_engine.integrate(geo_bw, 4e+7, initial_step = 1e+5, PrecisionGoal = 5, AccuracyGoal = 3, direction = "bw")
+    geo_engine.integrate(geo_fw, 4e+7, initial_step = 1, hmax = 1e+5, PrecisionGoal = 7, AccuracyGoal = 6, direction = "fw")
+    geo_engine.integrate(geo_bw, 4e+7, initial_step = 1, hmax = -1e+5, PrecisionGoal = 7, AccuracyGoal = 6, direction = "bw")
 
     # Merging of the forward and backward geodesics
     geo = pygro.Geodesic("time-like", geo_engine, verbose = False)
@@ -229,17 +228,17 @@ def log_prob(params):
 # Starting values of the parameters for the MCMC
 # delta and lambda start at 0 and 10 000 AU, respectively,
 # the walkers than explore the parameter space thanks to the flat priors
-start_params = [M_bh_s, D_s, T_s, Tp_s, a_s, e_s, inc_s, Omega_s, omega_s, x0_s, y0_s, vx0_s, vy0_s, vLSR_s, 0, 10000*AU]
+start_params = [M_bh_s, D_s, T_s, Tp_s, a_s, e_s, inc_s, Omega_s, omega_s, x0_s, y0_s, vx0_s, vy0_s, vLSR_s, 0, 15000*AU]
 
 # Flat priors only for delta and lambda
 start_flat = [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, -0.9, 100*AU]
 end_flat = [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 2, 25000*AU]
 
 # Sigmas for gaussian priors (and for the samll ball in the parameter space in which we initialize the walkers)
-delta_params = [0.012*1e+6**Msun, 0.0093*kpc, 0.0013, 0.00016, 0.041, 0.000066, np.deg2rad(0.033), np.deg2rad(0.031), np.deg2rad(0.031), 0.0002, 0.0002, 0.0001, 0.0001, 1.4, 0.05, 1000*AU]
+delta_params = [0.012*1e+6*Msun, 0.0093*kpc, 0.0013, 0.00016, 0.000041, 0.000066, np.deg2rad(0.033), np.deg2rad(0.031), np.deg2rad(0.031), 0.0002, 0.0002, 0.0001, 0.0001, 1.4, 0.05, 1000*AU]
 
 # Setting up pygro's Metric engine and Geodesic Engine 
-metric = pygro.default_metrics.Yukawa()
+metric = pygro.default_metrics.Yukawa(M = 1, lamb = 1, delta = 1)
 geo_engine = pygro.GeodesicEngine(metric)
 
 # Setting MCMM parameters
@@ -269,12 +268,13 @@ if __name__ == "__main__":
         # Burn-in run
         print('Burning in ...')
         nsteps = 1000
-        state = sampler.run_mcmc(start, nsteps, progress=True)
+        pos, prob, state = sampler.run_mcmc(start, nsteps, progress=True)
         state_sample = sampler.get_chain()
 
         #Actual run
         sampler.reset()
-        nsteps = max_n
+        
+        n_steps = max_n
 
         # Starting from the final position in the burn-in chain, sample for 1000
         # steps. (rstate0 is the state of the internal random number generator)
@@ -283,7 +283,7 @@ if __name__ == "__main__":
 
         # Now we'll sample for up to max_n steps
 
-        for sample in sampler.sample(pos, iterations=n_steps, progress=True,rstate0=state):
+        for sample in sampler.sample(pos, iterations = n_steps, progress=True,rstate0=state):
 
             # Only check convergence every 100 steps
             if sampler.iteration % 100:
